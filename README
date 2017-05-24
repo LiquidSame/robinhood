@@ -5,6 +5,8 @@ IV  - Database configuration
 V   - Enabling Lustre changelogs
 VI  - RobinHood config file
 VII - First run
+VIII- Start the daemon
+IX  - Quota visualization
 
 I - License
 ===========
@@ -157,3 +159,18 @@ Example: to regularly scan filesystem and run all policies:
 Starting the daemon:
 RHEL6: service robinhood start
 RHEL7: systemctl start robinhood
+
+IX - Quota visualization
+========================
+
+Robinhood web interface : (https://github.com/cea-hpc/robinhood/wiki/tmpfs_tutorial#Setting_up_web_interface)
+The basic robinhood web interface does not allow for one user to visualize their quotas (inodes or blocks).
+Using this Robinhood fork's variable $QUOTA_DISPLAY (in /var/www/robinhood/config.php), one can add
+a column which shows the hard quota for inodes and blocks per user.
+
+Setting to 0 disables the function and leaves the original web interface untouched.
+Setting to 1 displays all quotas for all users on the web interface.
+Setting to 2 displays all quotas for the users specifically filtered.
+
+This requires a QUOTA table on the mySQL database that can be created and kept up to date
+using rbh-quota from the python package available here : https://github.com/LiquidSame/rbh-quota
