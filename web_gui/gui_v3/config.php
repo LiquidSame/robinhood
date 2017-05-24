@@ -51,6 +51,8 @@ $ACCESS_LIST['native_acct'][] = '*';
 //Max row per result
 $MAX_ROWS = 1000;
 
+$QUOTA_DISPLAY = 1;
+
 $JSON_OPTIONS = null;
 if (version_compare(phpversion(), '5.4.0', '>='))
     $JSON_OPTIONS |= JSON_PRETTY_PRINT;

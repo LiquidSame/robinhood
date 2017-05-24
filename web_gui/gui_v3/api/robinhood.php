@@ -256,6 +256,7 @@ class MyAPI extends API
     protected function data() {
         if ($this->method == 'GET') {
             global $db;
+            global $QUOTA_DISPLAY;
 
             $self='$SELF';
             if (!check_access("datatables")) {
@@ -279,10 +280,21 @@ class MyAPI extends API
                 $columns[] = array('title' => 'Size');
                 $columns[] = array('title' => 'File Count');
                 $columnsDefs[] = array('type' => 'file-size', 'targets' => 1);
-                $req = $db->prepare("SELECT $content_requested, SUM(size) AS ssize, SUM(count) AS scount FROM ACCT_STAT $sqlfilter GROUP BY $content_requested;");
+                if ($QUOTA_DISPLAY == 1 || $QUOTA_DISPLAY == 2 && !empty($fullfilter[1])) {
+                    $columns[] = array('title' => 'Quota(size)');
+                    $columns[] = array('title' => 'Quota(inode)');
+                    $req = $db->prepare("SELECT $content_requested, ssize, hardBlocks, scount, hardInodes FROM QUOTA LEFT JOIN
+                                            (SELECT $content_requested, SUM(size) AS ssize, SUM(count) AS scount FROM ACCT_STAT GROUP BY $content_requested)
+                                            AS stat ON QUOTA.owner = stat.$content_requested $sqlfilter;");
+                } else {
+                    $req = $db->prepare("SELECT $content_requested, SUM(size) AS ssize, SUM(count) AS scount FROM ACCT_STAT $sqlfilter GROUP BY $content_requested");
+                }
                 $req->execute($fullfilter[1]);
                 while($sqldata = $req->fetch(PDO::FETCH_ASSOC)) {
-                    $datasets[] = array( $sqldata[$content_requested],formatSizeNumber($sqldata['ssize']),$sqldata['scount']);
+                    if ($QUOTA_DISPLAY == 1 || $QUOTA_DISPLAY == 2 && !empty($fullfilter[1]))
+                        $datasets[] = array( $sqldata[$content_requested],formatSizeNumber($sqldata['ssize']),$sqldata['scount'],formatSizeNumber($sqldata['hardBlocks']*1024),$sqldata['hardInodes']);
+                    else
+                        $datasets[] = array( $sqldata[$content_requested],formatSizeNumber($sqldata['ssize']),$sqldata['scount']);
                 }
                 break;
 
