@@ -51,7 +51,7 @@ static void global_cfg_set_default(void *module_config)
 #endif
     conf->stay_in_fs = true;
     conf->check_mounted = true;
-    conf->last_access_only_atime = false;
+    conf->last_access_only_atime = true;
     conf->uid_gid_as_numbers = false;
     conf->fs_key = FSKEY_FSNAME;
 
