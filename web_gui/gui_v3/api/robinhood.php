@@ -280,10 +280,12 @@ class MyAPI extends API
                 $columns[] = array('title' => 'Size');
                 $columns[] = array('title' => 'File Count');
                 $columnsDefs[] = array('type' => 'file-size', 'targets' => 1);
-                if ($QUOTA_DISPLAY == 1 || $QUOTA_DISPLAY == 2 && !empty($fullfilter[1])) {
-                    $columns[] = array('title' => 'Quota(size)');
-                    $columns[] = array('title' => 'Quota(inode)');
-                    $req = $db->prepare("SELECT $content_requested, ssize, hardBlocks, scount, hardInodes FROM QUOTA LEFT JOIN
+		if ($QUOTA_DISPLAY == 1 || $QUOTA_DISPLAY == 2 && !empty($fullfilter[1])) {
+                    $columns[] = array('title' => 'Quota - Size (Soft)');
+                    $columns[] = array('title' => 'Quota - Size (Hard)');
+                    $columns[] = array('title' => 'Quota - File count (Soft)');
+                    $columns[] = array('title' => 'Quota - File count (Hard)');
+                    $req = $db->prepare("SELECT $content_requested, ssize, softBlocks, hardBlocks, scount, softInodes, hardInodes FROM QUOTA LEFT JOIN
                                             (SELECT $content_requested, SUM(size) AS ssize, SUM(count) AS scount FROM ACCT_STAT GROUP BY $content_requested)
                                             AS stat ON QUOTA.owner = stat.$content_requested $sqlfilter;");
                 } else {
@@ -291,10 +293,16 @@ class MyAPI extends API
                 }
                 $req->execute($fullfilter[1]);
                 while($sqldata = $req->fetch(PDO::FETCH_ASSOC)) {
-                    if ($QUOTA_DISPLAY == 1 || $QUOTA_DISPLAY == 2 && !empty($fullfilter[1]))
-                        $datasets[] = array( $sqldata[$content_requested],formatSizeNumber($sqldata['ssize']),$sqldata['scount'],formatSizeNumber($sqldata['hardBlocks']*1024),$sqldata['hardInodes']);
-                    else
+                    if ($QUOTA_DISPLAY == 1 || $QUOTA_DISPLAY == 2 && !empty($fullfilter[1])) {
+                        $sqldata['hardBlocks'] = ($sqldata['hardBlocks'] === '0' ? 'Undefined' : formatSizeNumber($sqldata['hardBlocks']*1024));
+                        $sqldata['softBlocks'] = ($sqldata['softBlocks'] === '0' ? 'Undefined' : formatSizeNumber($sqldata['softBlocks']*1024));
+                        $sqldata['hardInodes'] = ($sqldata['hardInodes'] === '0' ? 'Undefined' : $sqldata['hardInodes']);
+                        $sqldata['softInodes'] = ($sqldata['softInodes'] === '0' ? 'Undefined' : $sqldata['softInodes']);
+                        $datasets[] = array( $sqldata[$content_requested],formatSizeNumber($sqldata['ssize']),$sqldata['scount'],
+                                                $sqldata['softBlocks'],$sqldata['hardBlocks'],$sqldata['softInodes'],$sqldata['hardInodes']);
+                    } else {
                         $datasets[] = array( $sqldata[$content_requested],formatSizeNumber($sqldata['ssize']),$sqldata['scount']);
+                    }
                 }
                 break;
 
