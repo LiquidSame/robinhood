@@ -47,8 +47,8 @@ function endsWith($haystack, $needle) {
  */
 function formatSizeNumber( $number, $precision=2 )
 {
-        if ($number === 0)
-            return 'N/A'
+        if ($number === '0')
+            return '0';
 
         $base = log($number, 1024);
         $suffixes = array('B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZT', 'YT');
