@@ -280,7 +280,7 @@ class MyAPI extends API
                 $columns[] = array('title' => 'Size');
                 $columns[] = array('title' => 'File Count');
                 $columnsDefs[] = array('type' => 'file-size', 'targets' => 1);
-		if ($QUOTA_DISPLAY == 1 || $QUOTA_DISPLAY == 2 && !empty($fullfilter[1])) {
+            if ($QUOTA_DISPLAY == 1 || $QUOTA_DISPLAY == 2 && !empty($fullfilter[1])) {
                     $columns[] = array('title' => 'Quota - Size (Soft)');
                     $columns[] = array('title' => 'Quota - Size (Hard)');
                     $columns[] = array('title' => 'Quota - File count (Soft)');
