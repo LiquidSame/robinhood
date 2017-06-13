@@ -89,6 +89,12 @@ require_once "common.php";
  *       LEFT MENU BUTTONS               *
  ****************************************/
 
+if (isset($_GET['formUID'])) {
+    $defaultUID = $_GET['formUID'];
+} else {
+    $defaultUID = "";
+}
+
 $fields = get_acct_columns();
 foreach ($fields as $field) {
         echo '<li><a href="#" onclick="GetGraph(\''.$field.'\')">'.l($field).'</a></li>';
@@ -107,7 +113,7 @@ echo '<li><a href="#"  onclick="GetGraph(\'Files\')">Files</a></li>';
     <form id="filterform" name="filterform">
             <fieldset class="form-group">
                 <label for="formUID">Filter</label>
-                <input type="text" class="form-control" id="formUID" name="uid" placeholder="UID">
+                <input type="text" class="form-control" id="formUID" name="uid" value="<?php echo $defaultUID; ?>" placeholder="UID">
             </fieldset>
             <fieldset class="form-group">
                 <input type="text" class="form-control" id="formGID" name="gid" placeholder="GID">
