@@ -89,18 +89,20 @@ require_once "common.php";
  *       LEFT MENU BUTTONS               *
  ****************************************/
 
-if (isset($_GET['formUID'])) {
-    $defaultUID = $_GET['formUID'];
-} else {
-    $defaultUID = "";
-}
-
 $fields = get_acct_columns();
 foreach ($fields as $field) {
         echo '<li><a href="#" onclick="GetGraph(\''.$field.'\')">'.l($field).'</a></li>';
 }
 
 echo '<li><a href="#"  onclick="GetGraph(\'Files\')">Files</a></li>';
+
+if (isset($_GET['formUID'])) {
+    $defaultUID = $_GET['formUID'];
+    echo '<script> $(document).ready(function(){$(\'#Owner\').trigger(\'click\');});</script>';
+} else {
+    $defaultUID = "";
+}
+
 ?>
 
           </ul>
