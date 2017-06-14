@@ -172,5 +172,9 @@ Setting to 0 disables the function and leaves the original web interface untouch
 Setting to 1 displays all quotas for all users on the web interface.
 Setting to 2 displays all quotas for the users specifically filtered.
 
+Using the URL '[hostAddress]/robinhood/?formUID=[UID]#', the UID filter will be set to [UID] on load and
+the 'Owner' graph will be selected as default.
+(Use this link to send someone directly check their own quotas)
+
 This requires a QUOTA table on the mySQL database that can be created and kept up to date
 using rbh-quota from the python package available here : https://github.com/LiquidSame/rbh-quota
