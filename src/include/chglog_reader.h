@@ -61,6 +61,12 @@ typedef struct chglog_reader_config_t {
      * internal queue have aged. */
     time_t queue_check_interval;
 
+    /* Max delay to update last committed changelog record */
+    time_t commit_update_max_delay;
+
+    /* Max delta of record id to update last committed changelog record */
+    int64_t commit_update_max_delta;
+
     /* Options suported by the MDS. LU-543 and LU-1331 are related to
      * events in changelog, where a rename is overriding a destination
      * file. */
@@ -86,8 +92,11 @@ int cl_reader_done(void);
 /** dump changelog processing stats */
 int cl_reader_dump_stats(void);
 
-/** store changelog stats to db */
-int cl_reader_store_stats(lmgr_t *lmgr);
+/** store changelog stats to db.
+ * Must be called after cl_reader_dump_stats() as
+ * cl_reader_store_stats() updates last_report time
+ */
+void cl_reader_store_stats(lmgr_t *lmgr);
 
 /** config handlers */
 extern mod_cfg_funcs_t cl_reader_cfg_hdlr;

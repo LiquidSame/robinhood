@@ -9448,6 +9448,86 @@ function test_reload
     return 0
 }
 
+function test_lhsm_archive
+{
+    # test_lhsm1.conf "check sql query string in case of multiple AND/OR"
+
+    if (( $is_lhsm == 0 )); then
+        echo "Lustre/HSM test only: skipped"
+        set_skipped
+        return 1
+    fi
+
+    config_file=$1
+    rm -f rh_archive.log
+
+    # run one pass lhsm_archive - need full scan first
+    $RH -f $RBH_CFG_DIR/$config_file --scan --once 2>&1 > /dev/null
+    $RH -f $RBH_CFG_DIR/$config_file --run=lhsm_archive -L rh_archive.log -l FULL -O
+
+    # check
+    grep "AS id FROM ENTRIES" rh_archive.log |
+      grep "AND (((ENTRIES.lhsm_lstarc=0" |
+      grep -q "ENTRIES.last_mod IS NULL))) AND (ENTRIES.last_access" ||
+      error "lhsm_archive query begin blocks incorrect"
+
+    grep "Error 7 executing query" rh_archive.log > /dev/null &&
+      error "lhsm_archive DB query failure"
+
+    return 0
+}
+
+function test_multirule_select
+{
+    # test_multirule.conf "check sql query string in case of multiple rules"
+
+    config_file=$1
+    logfile=rh_multirule.log
+    rm -f $logfile
+
+    # run one pass lhsm_archive - need full scan first
+    $RH -f $RBH_CFG_DIR/$config_file --scan --once 2>&1 > /dev/null
+    $RH -f $RBH_CFG_DIR/$config_file --run=cleanup -L $logfile -l FULL -O
+
+    # check
+    grep "AS id FROM ENTRIES" $logfile |
+      grep "OR ENTRIES.invalid IS NULL) AND ((((ENTRIES.last_access" |
+      grep "OR ENTRIES.last_mod IS NULL" |
+      grep -q "AND NOT (ENTRIES.fileclass LIKE BINARY '%+foo_files+%')" ||
+      error "multirule_select query block incorrect"
+
+    grep "Error 7 executing query" $logfile > /dev/null &&
+      error "multirule_select DB query failure"
+
+    return 0
+}
+
+
+function test_rmdir_depth
+{
+    # test_rmdir_depth.conf "check sql query for rmdir with depth condition"
+
+    config_file=$1
+    logfile=rh_rmdir.log
+    rm -f $logfile
+
+    export MATCH_PATH="$RH_ROOT"
+
+    # run one pass lhsm_archive - need full scan first
+    $RH -f $RBH_CFG_DIR/$config_file --scan --once 2>&1 > /dev/null
+    $RH -f $RBH_CFG_DIR/$config_file --run=rmdir_empty -L $logfile -l FULL -O \
+        2>/dev/null
+
+    # make sure query succeeds
+
+    grep -q "SELECT ENTRIES.id AS id FROM ENTRIES WHERE ENTRIES.type='dir'" $logfile ||
+      error "rmdir depth check DB query failure"
+
+    grep "Error 7 executing query" $logfile > /dev/null &&
+      error "rmdir depth check DB query failure"
+
+    return 0
+}
 
 #############################################################################
 
@@ -11622,6 +11702,95 @@ function test_changelog
     rm -f report.out find.out
 }
 
+# wait for changelog_clear until a given timeout
+# return 0 if change_clear occurs before the timeout
+# return 1 else
+function wait_changelog_clear
+{
+    local log=$1
+    local timeout=$2
+    local i=0
+
+    # changelog_clear indicate the changelog processing is done
+    while [ $i -lt $timeout ]; do
+        grep llapi_changelog_clear $log && return 0
+        sleep 1
+        ((i++))
+    done
+    # timeout
+    return 1
+}
+
+function test_commit_update
+{
+    local config_file=$1
+
+    clean_logs
+
+    if (( $no_log )); then
+            echo "Changelogs not supported on this config: skipped"
+            set_skipped
+            return 1
+    fi
+
+    # fill the changelog with 15 records
+    # as the max_delta is 5, we should have about 3 updates
+    echo "1. Creating initial objects..."
+    mkdir $RH_ROOT/dir.{1..15}
+
+    # count changelogs
+    local nb_log=$($LFS changelog lustre | wc -l)
+    echo "$nb_log pending changelogs"
+
+    # read the log and check last commit is updated every n records
+    echo "2. Reading changelogs..."
+        $RH -f $RBH_CFG_DIR/$config_file --readlog --once -l FULL \
+            -L rh_chglogs.log 2>/dev/null || error "reading changelog"
+
+    # count the number of updates of last commit
+    local commit_count=$(grep CL_LastCommit rh_chglogs.log | \
+                         grep "INSERT INTO" | wc -l)
+
+    # expected: nb change_log/5 (+ 1)
+    ((expect=$nb_log/5))
+    if (($commit_count != $expect)) && (($commit_count != $expect + 1)); then
+        error "Unexpected count of commit id update in DB ($commit_count vs. $expect (+1))"
+    else
+        echo "OK: commit id updated $commit_count times"
+    fi
+
+    :>rh_chglogs.log
+    # now start in daemon mode (queue 1 changelog to init the last commit time)
+    mkdir $RH_ROOT/dir.16
+    $RH -f $RBH_CFG_DIR/$config_file --readlog -l FULL -L rh_chglogs.log \
+        -p rh.pid -d 2>/dev/null
+
+    # changelog_clear indicate the changelog processing is done
+    wait_changelog_clear rh_chglogs.log 5 ||
+        error "No changelog_clear after 5s"
+
+    :>rh_chglogs.log
+    # wait for the timeout delay and check the commit id is updated
+    # when a new changelog is read
+    sleep 3
+    touch $RH_ROOT/dir.17
+
+    wait_changelog_clear rh_chglogs.log 10 ||
+        error "No changelog_clear after 10s"
+
+    # 1 update expected
+    commit_count=$(grep CL_LastCommit_ rh_chglogs.log | \
+                   grep "INSERT INTO" | wc -l)
+
+    if (($commit_count != 1)); then
+        error "Unexpected count of commit id update in DB ($commit_count vs. 1)"
+    else
+        echo "OK: commit id updated"
+    fi
+
+    kill_from_pidfile
+}
+
 ###########################################################
 ############### End changelog functions ###################
 ###########################################################
@@ -12138,6 +12307,7 @@ run_test 120 posix_acmtime common.conf "Test for posix ctimes"
 run_test 121 db_schema_convert "" "Test DB schema conversion"
 run_test 122 random_names common.conf "Test random file names"
 run_test 123 test_acct_borderline acct.conf "yes" "Test borderline ACCT cases"
+run_test 124 test_commit_update commit_update.conf "Update of last committed changelog"
 
 #### policy matching tests  ####
 
@@ -12229,6 +12399,10 @@ run_test 236h  test_prepost_sched test_prepost_sched.conf none auto_update \
     "" "post_sched_match=auto_update (no scheduler)"
 run_test 236i  test_prepost_sched test_prepost_sched.conf none force_update \
     common.max_per_run "post_sched_match=force_update"
+run_test 237   test_lhsm_archive test_lhsm1.conf "check sql query string in case of multiple AND/OR"
+run_test 238   test_multirule_select test_multirule.conf "check sql query string in case of multiple rules"
+run_test 239   test_rmdir_depth  test_rmdir_depth.conf "check sql query for rmdir with depth condition"
+
 
 #### triggers ####
 

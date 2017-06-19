@@ -1090,16 +1090,30 @@ void ListMgr_CloseProfile(struct lmgr_profile_t *p_iter);
 #define SCAN_STATUS_INCOMPLETE "incomplete"
 #define SCAN_STATUS_PARTIAL    "partial"
 
-// Changelog statitics
-#define CL_LAST_READ_REC_ID    "ChangelogLastId"
-#define CL_LAST_READ_REC_TIME  "ChangelogLastRecTime"
-#define CL_LAST_READ_TIME     "ChangelogLastTime"
-#define CL_LAST_COMMITTED     "ChangelogLastCommit"
-#define CL_COUNT_PREFIX       "ChangelogCount" /* variable is
-                                                  <prefix>_<event_name> */
-#define CL_DIFF_INTERVAL      "ChangelogDiffInt"
-#define CL_DIFF_PREFIX        "ChangelogDiff"  /* variable is
-                                                  <prefix>_<event_name> */
+/* Old changelog statitics */
+#define CL_LAST_READ_REC_ID_OLD   "ChangelogLastId"
+#define CL_LAST_READ_REC_TIME_OLD "ChangelogLastRecTime"
+#define CL_LAST_READ_TIME_OLD     "ChangelogLastTime"
+#define CL_DIFF_INTERVAL_OLD      "ChangelogDiffInt"
+/* Old CL counters: <prefix>_<event_name> */
+#define CL_COUNT_PREFIX_OLD       "ChangelogCount"
+#define CL_DIFF_PREFIX_OLD        "ChangelogDiff"
+/* format for this one was <prefix>_<mdt_name> */
+#define CL_LAST_COMMITTED_OLD     "ChangelogLastCommit"
+
+/* New changelog statitics.
+ * Variable name is <name>_<mdt_name>
+ * Format of value is rec_id:rec_time(epoch.us):step_time(epoch.us)
+ */
+#define CL_LAST_READ_REC        "CL_LastRead"
+#define CL_LAST_PUSHED_REC      "CL_LastPushed"
+#define CL_LAST_COMMITTED_REC   "CL_LastCommit"
+#define CL_LAST_CLEARED_REC     "CL_LastCleared"
+#define CL_DIFF_INTERVAL        "CL_DiffInt"
+
+/* new CL counters:  <prefix>_<mdt_name>_<event_name> */
+#define CL_COUNT_PREFIX         "CL_Count"
+#define CL_DIFF_PREFIX          "CL_Diff"
 
 #define MAX_VAR_LEN     1024
 /**
@@ -1146,6 +1160,8 @@ enum filter_flags {
                                            is allocated */
     FILTER_FLAG_ALLOC_LIST = (1 << 8), /** for internal usage: list in filter
                                            is allocated */
+    FILTER_FLAG_BEGIN_BLOCK = (1 << 9), /**< start a section with parenthesis */
+    FILTER_FLAG_END_BLOCK   = (1 << 10), /**< ends a section with parenthesis */
 };
 
 /** Add a criteria to a simple filter */
@@ -1194,12 +1210,14 @@ struct time_modifier;
  * @param[in]     smi       the current status manager (if any).
  * @param[in]     time_mod  time modifier for maintenance mode.
  * @param[in]     flags     filter flags
+ * @param[in]     op_ctx    default boolean operation
  */
 int convert_boolexpr_to_simple_filter(struct bool_node_t *boolexpr,
                                       lmgr_filter_t *filter,
                                       const struct sm_instance *smi,
                                       const struct time_modifier *time_mod,
-                                      enum filter_flags flags);
+                                      enum filter_flags flags,
+                                      bool_op_t op_ctx);
 
 /** Set a complex filter structure */
 int lmgr_set_filter_expression(lmgr_filter_t *p_filter,
@@ -1260,6 +1278,16 @@ int ListMgr_GenerateFields(attr_set_t *p_set, attr_mask_t target_mask);
 
 /** Check mask compatibility for request batching. */
 bool lmgr_batch_compat(attr_mask_t m1, attr_mask_t m2);
+
+/** Add begin or end block. */
+int lmgr_simple_filter_add_block(lmgr_filter_t *, enum filter_flags);
+
+/**
+ * Check if conditions can be translated to SQL statement for DB query
+ */
+bool cond2sql_ok(bool_node_t *boolexpr,
+                      const struct sm_instance *smi,
+                      const struct time_modifier *time_mod);
 
 #endif
 
