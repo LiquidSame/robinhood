@@ -91,10 +91,10 @@ require_once "common.php";
 
 $fields = get_acct_columns();
 foreach ($fields as $field) {
-        echo '<li><a href="#" onclick="GetGraph(\''.$field.'\')">'.l($field).'</a></li>';
+        echo '<li><a id="'.l($field).'" href="#" onclick="GetGraph(\''.$field.'\')">'.l($field).'</a></li>';
 }
 
-echo '<li><a href="#"  onclick="GetGraph(\'Files\')">Files</a></li>';
+echo '<li><a href="#" onclick="GetGraph(\'Files\')">Files</a></li>';
 
 if (isset($_GET['formUID'])) {
     $defaultUID = $_GET['formUID'];
